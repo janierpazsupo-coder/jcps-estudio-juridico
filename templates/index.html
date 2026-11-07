@@ -35,15 +35,52 @@ html[data-theme=light]{color-scheme:light;--bg:#f7f1e7;--surface:#fffdf8;--surfa
 @media(max-width:350px){.header-shell{gap:3px}.brand-logo{max-width:63px;height:60px}.brand-second .brand-logo{max-width:95px;height:60px}.icon-btn{width:33px;height:35px}}
 
 html[data-theme=light] .site-header{background:#18130e;color:#fff4e2;border-bottom-color:#785e3a}html[data-theme=light] .site-header .nav a,html[data-theme=light] .site-header .icon-btn{color:#f8eddb}html[data-theme=light] .site-header .icon-btn{border-color:#806b4d}html[data-theme=light] .site-header .nav{background:#18130e}html[data-theme=light] .site-header .nav a{border-bottom-color:#67533c}
+
+/* Identidad gráfica: originales conservados dentro de lienzos horizontales 550x120 px, sin texto añadido. */
+.header-shell .brand picture{display:block;line-height:0}
+@media(min-width:861px){
+  .header-shell .brand-logo,.header-shell .brand-second .brand-logo{width:clamp(205px,19vw,278px);height:auto;max-width:none;max-height:none;object-fit:contain;display:block}
+  .header-shell .brand,.header-shell .brand-second{flex:0 0 auto}
+  .header-shell{gap:10px}
+  .header-shell .nav{gap:clamp(8px,1vw,16px)}
+  .header-shell .nav a{font-size:clamp(.69rem,.79vw,.82rem)}
+}
+@media(max-width:860px){
+  .header-shell .brand-logo,.header-shell .brand-second .brand-logo{display:block;width:auto;height:74px;max-height:74px;max-width:90px;object-fit:contain}
+  .header-shell .brand-second .brand-logo{max-width:106px}
+}
+@media(max-width:600px){
+  .header-shell .brand-logo,.header-shell .brand-second .brand-logo{height:67px;max-height:67px;max-width:79px}
+  .header-shell .brand-second .brand-logo{max-width:99px}
+}
+@media(max-width:350px){
+  .header-shell .brand-logo,.header-shell .brand-second .brand-logo{height:57px;max-height:57px;max-width:66px}
+  .header-shell .brand-second .brand-logo{max-width:83px}
+}
+
+/* Distribución del encabezado autorizada: dos logotipos originales de 550 x 120 px.
+   El marco del archivo es transparente; ningún texto ni descripción se agrega. */
+.site-header .header-shell{position:relative;width:calc(100% - 34px);max-width:none;min-height:124px;justify-content:center;gap:18px}
+.site-header .brand{position:absolute;left:0;top:50%;transform:translateY(-50%);width:550px;height:120px;display:flex;align-items:center;justify-content:flex-start;margin:0;max-width:40vw;z-index:1}
+.site-header .brand-second{left:auto;right:0;justify-content:flex-end}
+.site-header .brand picture{display:block;width:100%;height:100%}
+.site-header .brand-logo,.site-header .brand-second .brand-logo{width:100%;height:120px;max-width:none;object-fit:contain;object-position:left center}
+.site-header .brand-second .brand-logo{object-position:right center}
+.site-header .nav{position:relative;z-index:3;margin:0;gap:13px}
+.site-header .header-actions{position:relative;z-index:4;margin:0;gap:8px}
+@media(max-width:1100px){.site-header .header-shell{min-height:105px}.site-header .brand{width:440px;height:100px;max-width:38vw}.site-header .brand-logo,.site-header .brand-second .brand-logo{height:100px}}
+@media(max-width:860px){.site-header .header-shell{width:calc(100% - 24px);min-height:88px;justify-content:center}.site-header .brand{width:100px;height:75px;max-width:none;left:0}.site-header .brand-second{left:auto;right:0;width:144px}.site-header .brand picture{height:75px}.site-header .brand-logo{height:75px;width:100%;object-position:left center}.site-header .brand-second .brand-logo{height:75px;object-position:right center}.site-header .nav{position:absolute;top:100%;left:-12px;right:-12px;margin:0}}
+@media(max-width:600px){.site-header .header-shell{min-height:84px}.site-header .brand{height:70px;width:76px}.site-header .brand-second{height:70px;width:104px}.site-header .brand picture{height:70px}.site-header .brand-logo,.site-header .brand-second .brand-logo{height:70px;width:100%;max-width:none}.site-header .header-actions{gap:8px}.site-header .icon-btn{width:38px;height:38px}}
+@media(max-width:355px){.site-header .brand{width:64px}.site-header .brand-second{width:88px}.site-header .icon-btn{width:35px;height:35px}.site-header .header-actions{gap:4px}}
 </style>
 </head>
 <body>
 <a class="skip" href="#contenido">Saltar al contenido</a>
 <header class="site-header" id="encabezado">
   <div class="container header-shell">
-    <a class="brand" href="#inicio" aria-label="JCPS — volver al inicio"><img class="brand-logo" id="logoLeft" src="/static/logo-izquierdo.png" alt="Logo JCPS"></a>
+    <a class="brand" href="#inicio" aria-label="JCPS — volver al inicio"><picture><source media="(max-width: 860px)" srcset="/static/logo-izquierdo.png"><img class="brand-logo" id="logoLeft" src="/static/logo-izquierdo-horizontal.png" alt="Logotipo original JCPS" width="550" height="120"></picture></a>
     <nav class="nav" id="menu" aria-label="Menú principal"><a href="#inicio">Inicio</a><a href="#especialidades">Especialidades</a><a href="#guias">Temas</a><a href="#nosotros">Nosotros</a><a href="#recursos">Recursos</a><a href="#contacto">Contacto</a></nav>
-    <div class="header-actions"><button class="icon-btn" type="button" id="themeToggle" title="Cambiar entre modo claro y oscuro" aria-label="Activar modo claro">☀</button><button class="icon-btn menu-btn" type="button" id="menuToggle" aria-label="Abrir menú" aria-controls="menu" aria-expanded="false">☰</button></div><a class="brand brand-second" href="#inicio" aria-label="Paz Supo — volver al inicio"><img class="brand-logo logo-right" id="logoRight" src="/static/logo-derecho.png" alt="Logo Estudio Jurídico Paz Supo"></a>
+    <div class="header-actions"><button class="icon-btn" type="button" id="themeToggle" title="Cambiar entre modo claro y oscuro" aria-label="Activar modo claro">☀</button><button class="icon-btn menu-btn" type="button" id="menuToggle" aria-label="Abrir menú" aria-controls="menu" aria-expanded="false">☰</button></div><a class="brand brand-second" href="#inicio" aria-label="Paz Supo — volver al inicio"><picture><source media="(max-width: 860px)" srcset="/static/logo-derecho.png"><img class="brand-logo logo-right" id="logoRight" src="/static/logo-derecho-horizontal.png" alt="Logotipo original Estudio Jurídico Paz Supo" width="550" height="120"></picture></a>
   </div>
 </header>
 <main id="contenido">
@@ -71,6 +108,7 @@ html[data-theme=light] .site-header{background:#18130e;color:#fff4e2;border-bott
 <div class="file-zone"><label for="inFiles">Adjuntar fotografías y documentos (opcional)</label><input id="inFiles" name="archivos" type="file" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.odt,image/jpeg,image/png,image/webp,application/pdf"><p class="file-hint">JPG, PNG, WebP, Word (.doc, .docx), PDF, Excel, PowerPoint, TXT y ODT. Máximo 3 archivos, hasta 3 MB cada uno y 6 MB en total.</p><ul id="fileList" class="file-chip-list" aria-live="polite"></ul><p id="fileWarning" class="file-hint" role="status"></p></div>
 <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden" aria-hidden="true"><label>Deja vacío este campo<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
 <label style="display:flex;gap:10px;align-items:start;margin:22px 0;color:var(--text);font-size:.83rem;line-height:1.55"><input type="checkbox" id="consentimiento" name="consentimiento" value="si" required style="width:18px;height:18px;flex:none;margin-top:3px;accent-color:var(--accent)"><span>Autorizo usar los datos y archivos proporcionados únicamente para gestionar mi consulta. Leí la <a href="/privacidad" target="_blank" rel="noopener" style="color:var(--accent-strong);text-decoration:underline">información de privacidad</a>.</span></label>
+<p class="file-hint" style="margin:0 0 13px">Por seguridad, no adjuntes DNI, contraseñas, historias clínicas ni expedientes completos. Este servicio aún no dispone de almacenamiento permanente verificado.</p>
 <div class="form-actions"><button type="submit" class="btn btn-primary" id="sendConsulta">Enviar consulta <span aria-hidden="true">→</span></button><button type="reset" class="btn btn-quiet" id="resetForm">Limpiar campos</button></div>
 <p class="message" id="formStatus" role="status" aria-live="polite"></p>
 <div id="sentReceipt" hidden style="margin-top:18px;border:1px solid var(--accent);border-radius:12px;padding:20px;background:var(--surface2);color:var(--text)" role="status" aria-live="polite"></div>
@@ -130,7 +168,7 @@ $('consultForm').addEventListener('submit',async e=>{
    if(!response.ok||!data.ok)throw Error(data.detail||'No se pudo recibir la consulta. Intenta nuevamente.');
    status.textContent='';
    $('sentReceipt').hidden=false;
-   $('sentReceipt').textContent=`Consulta recibida en la bandeja privada de JCPS. Código: ${data.codigo}. Conserva esta referencia. El formulario no envía mensajes por WhatsApp.`;
+   $('sentReceipt').textContent=`Consulta registrada en JCPS. Código: ${data.codigo}. Conserva esta referencia. Su recepción no confirma que Carloman o Darly hayan leído el mensaje.`;
    f.reset();selectedFiles=[];$('fileList').innerHTML='';$('fileWarning').textContent='';
    $('sentReceipt').scrollIntoView({behavior:'smooth',block:'nearest'});
  }catch(err){status.textContent=String(err.message||'No fue posible enviar la consulta.');}
