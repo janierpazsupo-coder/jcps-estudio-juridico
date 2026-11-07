@@ -159,6 +159,9 @@ def _notify_admins(code):
 
 @router.post('/api/consultas')
 async def recibir_consulta(req:Request):
+    # No confirmar una consulta si ningún administrador puede acceder a la bandeja.
+    if not os.getenv('JCPS_ADMIN_PASSWORD', '').strip():
+        raise HTTPException(503, 'La recepción está pendiente de configurar la bandeja privada. No se ha enviado la consulta.')
     origin=req.headers.get('origin','').rstrip('/')
     if origin and origin not in APPROVED_ORIGINS:
         raise HTTPException(403,'Origen no autorizado.')
@@ -201,6 +204,8 @@ async def recibir_consulta(req:Request):
         files.append((filename,mime,payload))
     if os.getenv('RENDER') and not DATABASE_URL:
         raise HTTPException(503, 'La recepción de consultas está temporalmente deshabilitada hasta asegurar su almacenamiento. No se guardó ni envió información.')
+    if files and not DATABASE_URL:
+        raise HTTPException(503, 'Los documentos requieren almacenamiento permanente. La consulta no se registró; inténtalo sin adjuntos por ahora.')
     init_contact_db()
     codigo='JCPS-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+secrets.token_hex(3).upper()
     now=datetime.now(timezone.utc).isoformat()
@@ -300,7 +305,9 @@ def estado_consultas():
         init_contact_db()
         with contact_db() as (conn, pg):
             conn.execute('SELECT 1').fetchone()
-        return JSONResponse({'operativo':True, 'almacenamiento': 'postgres' if DATABASE_URL else 'local_temporal',
+        return JSONResponse({'operativo':bool(os.getenv('JCPS_ADMIN_PASSWORD')), 'almacenamiento': 'postgres' if DATABASE_URL else 'local_temporal',
+             'bandeja_configurada':bool(os.getenv('JCPS_ADMIN_PASSWORD')),
+             'adjuntos_habilitados':bool(DATABASE_URL),
              'avisos_email_configurados':bool(os.getenv('JCPS_SMTP_HOST') and os.getenv('JCPS_NOTIFY_EMAILS'))},
              headers={'Cache-Control':'no-store'})
     except Exception:
