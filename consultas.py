@@ -199,6 +199,8 @@ async def recibir_consulta(req:Request):
         suffix=_validate_attachment(filename,payload)
         mime=mimetypes.types_map.get(suffix,'application/octet-stream')
         files.append((filename,mime,payload))
+    if os.getenv('RENDER') and not DATABASE_URL:
+        raise HTTPException(503, 'La recepción de consultas está temporalmente deshabilitada hasta asegurar su almacenamiento. No se guardó ni envió información.')
     init_contact_db()
     codigo='JCPS-'+datetime.now(timezone.utc).strftime('%Y%m%d')+'-'+secrets.token_hex(3).upper()
     now=datetime.now(timezone.utc).isoformat()
@@ -292,6 +294,8 @@ def privacidad():
 
 @router.get('/api/estado-consultas')
 def estado_consultas():
+    if os.getenv('RENDER') and not DATABASE_URL:
+        return JSONResponse({'operativo':False,'detalle':'Falta almacenamiento permanente para las consultas.'},status_code=503,headers={'Cache-Control':'no-store'})
     try:
         init_contact_db()
         with contact_db() as (conn, pg):
