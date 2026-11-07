@@ -2282,3 +2282,7 @@ async def upload_official_logo(position: str, req: Request):
 # Recepción y bandeja privada de consultas.
 from consultas import router as consultas_router
 app.include_router(consultas_router)
+
+# Actualización de noticias desde canales RSS oficiales de Gob.pe.
+from recursos import router as recursos_router
+app.include_router(recursos_router)
