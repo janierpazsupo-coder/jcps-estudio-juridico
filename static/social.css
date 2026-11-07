@@ -37,3 +37,13 @@
 #comunidad .community-item a{color:var(--accent-strong);text-decoration:underline}
 @media(max-width:950px){#comunidad .community-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){#comunidad .community-shell{padding:50px 0}#comunidad .community-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}#comunidad .community-tab{min-height:56px;font-size:.87rem}#comunidad .community-cards{grid-template-columns:1fr}#comunidad .community-links{grid-template-columns:repeat(2,minmax(0,1fr))}#comunidad .community-panel{min-height:180px}}
+
+/* Enlaces profesionales externos: fuentes primarias y herramientas bibliográficas */
+#comunidad .jcps-tools-group{margin-top:25px;padding-top:22px;border-top:1px solid var(--stroke)}
+#comunidad .jcps-tools-group h4{font-size:1.13rem;margin:0 0 15px;color:var(--text)}
+#comunidad .jcps-tools-group .community-links a{display:flex;flex-direction:column;gap:8px;font-size:.94rem;overflow-wrap:anywhere}
+#comunidad .jcps-tools-group .community-links small{font-size:.82rem;font-weight:400;line-height:1.45;color:var(--muted)}
+#comunidad .community-hint a{color:var(--accent-strong);text-decoration:underline;text-underline-offset:3px}
+#comunidad .community-hint p{margin:10px 0 0}
+#comunidad .community-hint select{margin:10px 0 6px}
+@media(max-width:560px){#comunidad .community-links{grid-template-columns:1fr}#comunidad .community-tools-group{margin-top:18px}}
