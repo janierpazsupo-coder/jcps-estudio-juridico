@@ -2162,7 +2162,7 @@ def admin(req:Request):
     if 'csrf' not in req.session: req.session['csrf']=secrets.token_urlsafe(32)
     token=esc(req.session['csrf']);h=f'<input type="hidden" name="csrf" value="{token}">'
     with db() as c:
-        gs=[guide_dict(x) for x in c.execute('SELECT * FROM guides WHERE area IN ('laboral','civil') ORDER BY area,position,id')]
+        gs=[guide_dict(x) for x in c.execute("SELECT * FROM guides WHERE area IN ('laboral','civil') ORDER BY area,position,id")]
         fs=[dict(x) for x in c.execute('SELECT * FROM faqs ORDER BY position,id')]
         cfg=dict(c.execute('SELECT key,value FROM settings'))
     body=f'<div class="top"><h1>Panel de contenidos JCPS</h1><form action="/admin/logout" method="post">{h}<button>Cerrar sesión</button></form></div><div class="panel"><h2>Consultas recibidas</h2><p>Abre la bandeja privada para revisar mensajes y descargar documentos enviados desde la página.</p><p><a href="/admin/consultas" style="display:inline-block;background:#dab77e;color:#102030;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:bold">Abrir bandeja de consultas →</a></p><p><a href="/admin/comunidad" style="display:inline-block;background:#dab77e;color:#102030;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:bold">Administrar Comunidad, Eventos y Promociones →</a></p></div><p>Edita especialidades, temas y contactos. Los cambios de contenido guardados en la base local pueden perderse en el plan gratuito.</p>'
