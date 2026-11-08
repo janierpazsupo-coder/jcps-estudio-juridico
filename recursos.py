@@ -15,7 +15,7 @@ router = APIRouter()
 SOURCES = (
     ('mtpe', 'Ministerio de Trabajo', 'Laboral'),
     ('sunarp', 'SUNARP', 'Civil'),
-    ('pj', 'Poder Judicial', 'Civil y penal'),
+    ('pj', 'Poder Judicial', 'Civil'),
 )
 _cache = {'until': 0.0, 'items': [], 'ok_sources': [], 'consulted': None}
 _lock = asyncio.Lock()

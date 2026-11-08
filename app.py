@@ -2080,16 +2080,19 @@ def init_db():
         if c.execute("SELECT COUNT(*) FROM guides").fetchone()[0] == 0:
             for i, x in enumerate(seed_guides):
                 slug, area, title, summary, details = x
+                if area not in ('laboral','civil'): continue
                 c.execute("INSERT INTO guides(slug,area,title,summary,details,enabled,position) VALUES(?,?,?,?,?,1,?)", (slug,area,title,summary,json.dumps(details,ensure_ascii=False),i))
         if c.execute("SELECT COUNT(*) FROM faqs").fetchone()[0] == 0:
             for i, (q, a) in enumerate(seed_faqs):
                 c.execute("INSERT INTO faqs(question,answer,position) VALUES(?,?,?)", (q,a,i))
         # Se añaden temas faltantes sin reescribir ni borrar guías editadas previamente.
         for index,(area,grupo,titulo,resumen,detalles) in enumerate(expanded_topics, start=100):
+            if area not in ('laboral','civil'): continue
             slug=slugify_for_seed(grupo+'-'+titulo)
             c.execute("INSERT OR IGNORE INTO guides(slug,area,title,summary,details,enabled,position) VALUES(?,?,?,?,?,1,?)",
                       (slug,area,titulo,resumen,json.dumps(detalles,ensure_ascii=False),index))
-        c.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('whatsapp_darly','51973446412')")
+        c.execute("DELETE FROM guides WHERE area='penal'")
+        c.execute("DELETE FROM settings WHERE key='whatsapp_darly'")
         c.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('whatsapp','51927859384')")
         c.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('contact_name','Janier Carloman Paz Supo')")
 
@@ -2110,21 +2113,21 @@ def home():
 @app.get("/api/public")
 def public():
     with db() as c:
-        guides=[guide_dict(row) for row in c.execute("SELECT * FROM guides WHERE enabled=1 ORDER BY position,id")]
+        guides=[guide_dict(row) for row in c.execute("SELECT * FROM guides WHERE enabled=1 AND area IN ('laboral','civil') ORDER BY position,id")]
         faqs=[dict(row) for row in c.execute("SELECT * FROM faqs ORDER BY position,id")]
         settings=dict(c.execute("SELECT key,value FROM settings"))
     # Avoid caching when administrators update content.
-    return JSONResponse({"guides":guides,"faqs":faqs,"whatsapp":settings.get("whatsapp"),"whatsapp_darly":settings.get("whatsapp_darly", ""),"contact_name":settings.get("contact_name")}, headers={"Cache-Control":"no-store"})
+    return JSONResponse({"guides":guides,"faqs":faqs,"whatsapp":settings.get("whatsapp"),"contact_name":settings.get("contact_name")}, headers={"Cache-Control":"no-store"})
 
 @app.get("/orientacion/{slug}", response_class=HTMLResponse)
 def detail(slug: str):
     with db() as c:
-        row=c.execute("SELECT * FROM guides WHERE slug=? AND enabled=1",(slug,)).fetchone()
+        row=c.execute("SELECT * FROM guides WHERE slug=? AND enabled=1 AND area IN ('laboral','civil')",(slug,)).fetchone()
     if row is None: raise HTTPException(status_code=404, detail="No se encontró esa materia")
     item=guide_dict(row); clean=html.escape
-    area={"civil":"Derecho Civil","laboral":"Derecho Laboral","penal":"Derecho Penal"}.get(item['area'],"Información jurídica")
+    area={"civil":"Derecho Civil","laboral":"Derecho Laboral"}.get(item['area'],"Información jurídica")
     lis=''.join(f'<li>{clean(str(x))}</li>' for x in item['details'])
-    return f'''<!doctype html><html lang="es-PE"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{clean(item['title'])} | JCPS</title><meta name="description" content="{clean(item['summary'])}"><style>body{{font-family:system-ui,sans-serif;background:#0a1725;color:#f6f2e8;margin:0;line-height:1.7}}main{{max-width:770px;margin:10vh auto;padding:28px}}a{{color:#e2bf89}}h1{{font-family:Georgia,serif;font-size:clamp(2.2rem,6vw,4.1rem)}}.tag{{color:#e2bf89;text-transform:uppercase;letter-spacing:2px;font-size:.82rem}}.card{{background:#142538;border:1px solid #4e4b42;padding:30px;border-radius:20px}}li{{padding:9px 0}}.btn{{display:inline-block;padding:12px 20px;margin:10px 10px 0 0;background:#d4b07a;color:#102030;border-radius:10px;font-weight:700;text-decoration:none}}</style></head><body><main><a href="/#especialidades">← Regresar a las especialidades</a><p class="tag">JCPS · {clean(area)}</p><h1>{clean(item['title'])}</h1><p>{clean(item['summary'])}</p><div class="card"><h2>Temas generales</h2><ul>{lis}</ul><p>Material informativo: no sustituye la atención profesional ni el análisis individual de un caso.</p></div><a class="btn" href="/#contacto">Preparar consulta por WhatsApp ↗</a></main></body></html>'''
+    return f'''<!doctype html><html lang="es-PE"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{clean(item['title'])} | JCPS</title><meta name="description" content="{clean(item['summary'])}"><style>body{{font-family:system-ui,sans-serif;background:#0a1725;color:#f6f2e8;margin:0;line-height:1.7}}main{{max-width:770px;margin:10vh auto;padding:28px}}a{{color:#e2bf89}}h1{{font-family:Georgia,serif;font-size:clamp(2.2rem,6vw,4.1rem)}}.tag{{color:#e2bf89;text-transform:uppercase;letter-spacing:2px;font-size:.82rem}}.card{{background:#142538;border:1px solid #4e4b42;padding:30px;border-radius:20px}}li{{padding:9px 0}}.btn{{display:inline-block;padding:12px 20px;margin:10px 10px 0 0;background:#d4b07a;color:#102030;border-radius:10px;font-weight:700;text-decoration:none}}</style></head><body><main><a href="/#especialidades">← Regresar a las especialidades</a><p class="tag">JCPS · {clean(area)}</p><h1>{clean(item['title'])}</h1><p>{clean(item['summary'])}</p><div class="card"><h2>Temas generales</h2><ul>{lis}</ul><p>Material informativo: no sustituye la atención profesional ni el análisis individual de un caso.</p></div><a class="btn" href="/#contacto">Enviar consulta ↗</a></main></body></html>'''
 
 # Small per-IP backoff for password attempts (memory only); use a proxy-level rate limit in production.
 login_attempts: dict[str,list[float]]={}
@@ -2159,15 +2162,15 @@ def admin(req:Request):
     if 'csrf' not in req.session: req.session['csrf']=secrets.token_urlsafe(32)
     token=esc(req.session['csrf']);h=f'<input type="hidden" name="csrf" value="{token}">'
     with db() as c:
-        gs=[guide_dict(x) for x in c.execute('SELECT * FROM guides ORDER BY area,position,id')]
+        gs=[guide_dict(x) for x in c.execute('SELECT * FROM guides WHERE area IN ('laboral','civil') ORDER BY area,position,id')]
         fs=[dict(x) for x in c.execute('SELECT * FROM faqs ORDER BY position,id')]
         cfg=dict(c.execute('SELECT key,value FROM settings'))
     body=f'<div class="top"><h1>Panel de contenidos JCPS</h1><form action="/admin/logout" method="post">{h}<button>Cerrar sesión</button></form></div><div class="panel"><h2>Consultas recibidas</h2><p>Abre la bandeja privada para revisar mensajes y descargar documentos enviados desde la página.</p><p><a href="/admin/consultas" style="display:inline-block;background:#dab77e;color:#102030;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:bold">Abrir bandeja de consultas →</a></p><p><a href="/admin/comunidad" style="display:inline-block;background:#dab77e;color:#102030;padding:12px 18px;border-radius:9px;text-decoration:none;font-weight:bold">Administrar Comunidad, Eventos y Promociones →</a></p></div><p>Edita especialidades, temas y contactos. Los cambios de contenido guardados en la base local pueden perderse en el plan gratuito.</p>'
     if req.query_params.get('msg'): body+='<p class="info">Cambios procesados. Revisa el contenido a continuación.</p>'
     body+=f'''<h2>Logotipos originales en el encabezado</h2><div class="panel"><p>Sube únicamente tus archivos originales. Se mostrarán arriba, junto a «PAZ SUPO». Si no hay archivo, el sitio no inventa ni muestra un logotipo de relleno.</p><div class="grid"><label>Logotipo izquierdo<input type="file" id="original-izquierdo" accept="image/png,image/jpeg,image/webp"></label><label>Logotipo derecho<input type="file" id="original-derecho" accept="image/png,image/jpeg,image/webp"></label></div><button type="button" onclick="subirLogo('izquierdo')">Subir logotipo izquierdo</button> <button type="button" onclick="subirLogo('derecho')">Subir logotipo derecho</button><p class="hint" id="logoStatus" role="status"></p></div><script>async function subirLogo(side){{const input=document.getElementById('original-'+side),msg=document.getElementById('logoStatus'),file=input.files[0];if(!file){{msg.textContent='Selecciona primero el archivo original.';return}}if(file.size>5*1024*1024){{msg.textContent='El archivo supera 5 MB.';return}}try{{const response=await fetch('/admin/logo/'+side,{{method:'POST',headers:{{'X-CSRF-Token':'{token}','Content-Type':file.type}},body:file}});if(!response.ok)throw new Error('No se pudo subir el archivo original (HTTP '+response.status+').');msg.textContent='Logotipo original guardado. Actualiza la portada para comprobarlo.';}}catch(error){{msg.textContent=error.message}}}}</script>'''
-    body+=f'''<h2>Contacto WhatsApp</h2><form action="/admin/config" method="post">{h}<div class="grid"><label>Número en formato internacional, solo dígitos (Perú: 51 + 9 cifras)<input name="whatsapp" required pattern="51[0-9]{{9}}" maxlength="11" value="{esc(cfg.get('whatsapp'))}"></label><label>WhatsApp de Darly (51 + 9 cifras)<input name="whatsapp_darly" required pattern="51[0-9]{{9}}" maxlength="11" value="{esc(cfg.get('whatsapp_darly', ''))}"></label><label>Persona de contacto<input name="contact_name" maxlength="90" required value="{esc(cfg.get('contact_name'))}"></label></div><button>Guardar WhatsApp</button></form><h2>Crear nueva guía</h2><form method="post" action="/admin/guide">{h}<div class="grid"><label>Especialidad<select name="area"><option value="laboral">Laboral</option><option value="civil">Civil</option><option value="penal">Penal</option></select></label><label>Título<input name="title" maxlength="110" required></label></div><label>Descripción breve<input name="summary" maxlength="350" required></label><label>Temas (uno por línea)<textarea name="details" required maxlength="1500"></textarea></label><button>Crear guía</button></form><h2>Guías existentes</h2><div class="grid">'''
+    body+=f'''<h2>Contacto WhatsApp</h2><form action="/admin/config" method="post">{h}<div class="grid"><label>Número en formato internacional, solo dígitos (Perú: 51 + 9 cifras)<input name="whatsapp" required pattern="51[0-9]{{9}}" maxlength="11" value="{esc(cfg.get('whatsapp'))}"></label><label>Persona de contacto<input name="contact_name" maxlength="90" required value="{esc(cfg.get('contact_name'))}"></label></div><button>Guardar WhatsApp</button></form><p class="hint">El aviso automático por WhatsApp utiliza WhatsApp Business Platform: el destinatario debe coincidir con la variable privada JCPS_WA_TO configurada en Render. Revisa WHATSAPP_CONFIGURACION.md; cambiar este número visible no cambia por sí solo las credenciales ni el número autorizado de Meta.</p><h2>Crear nueva guía</h2><form method="post" action="/admin/guide">{h}<div class="grid"><label>Especialidad<select name="area"><option value="laboral">Laboral</option><option value="civil">Civil</option></select></label><label>Título<input name="title" maxlength="110" required></label></div><label>Descripción breve<input name="summary" maxlength="350" required></label><label>Temas (uno por línea)<textarea name="details" required maxlength="1500"></textarea></label><button>Crear guía</button></form><h2>Guías existentes</h2><div class="grid">'''
     for g in gs:
-        selected=''.join(f'<option value="{x}" {"selected" if g["area"]==x else ""}>{x.title()}</option>' for x in ('laboral','civil','penal'))
+        selected=''.join(f'<option value="{x}" {"selected" if g["area"]==x else ""}>{x.title()}</option>' for x in ('laboral','civil'))
         topics='\n'.join(g['details'])
         body+=f'''<form action="/admin/guide" method="post">{h}<input type="hidden" name="id" value="{g['id']}"><label>Área<select name="area">{selected}</select></label><label>Título<input name="title" maxlength="110" required value="{esc(g['title'])}"></label><label>Resumen<textarea name="summary" required maxlength="350">{esc(g['summary'])}</textarea></label><label>Temas<textarea name="details" maxlength="1500">{esc(topics)}</textarea></label><label>Orden<input type="number" name="position" min="0" max="999" value="{g['position']}"></label><label><input type="checkbox" name="enabled" value="1" {"checked" if g['enabled'] else ""} style="width:auto"> Visible</label><button>Guardar</button><button class="danger" type="submit" name="delete" value="1" onclick="return confirm('¿Eliminar definitivamente esta guía?')">Eliminar</button></form>'''
     body+='</div><h2>Preguntas frecuentes</h2><div class="grid">'
@@ -2199,13 +2202,11 @@ async def logout(req:Request):
 async def edit_config(req:Request):
     f=await parse_form(req);require_admin(req,f)
     phone=re.sub(r'\D','',f.get('whatsapp',''))
-    darly_phone=re.sub(r'\D','',f.get('whatsapp_darly',''))
     name=f.get('contact_name','').strip()
-    if not re.fullmatch(r'51\d{9}',phone) or not re.fullmatch(r'51\d{9}',darly_phone) or not(1<=len(name)<=90): raise HTTPException(422,'Número o nombre inválido')
+    if not re.fullmatch(r'51\d{9}',phone) or not(1<=len(name)<=90): raise HTTPException(422,'Número o nombre inválido')
     with db() as c:
         c.execute("INSERT INTO settings(key,value) VALUES('whatsapp',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(phone,))
         c.execute("INSERT INTO settings(key,value) VALUES('contact_name',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(name,))
-        c.execute("INSERT INTO settings(key,value) VALUES('whatsapp_darly',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(darly_phone,))
     return go_admin('ok')
 
 def slugify(s):
@@ -2221,7 +2222,7 @@ async def edit_guide(req:Request):
         return go_admin('ok')
     area=f.get('area','');title=f.get('title','').strip();summary=f.get('summary','').strip()
     details=[x.strip() for x in f.get('details','').splitlines() if x.strip()]
-    if area not in ('laboral','civil','penal') or not(3<=len(title)<=110) or not(8<=len(summary)<=350) or len(details)>15 or sum(len(x) for x in details)>1450:raise HTTPException(422,'Datos de guía inválidos')
+    if area not in ('laboral','civil') or not(3<=len(title)<=110) or not(8<=len(summary)<=350) or len(details)>15 or sum(len(x) for x in details)>1450:raise HTTPException(422,'Datos de guía inválidos')
     position=min(max(int(f.get('position','0')) if f.get('position','0').isdigit() else 0,0),999)
     enabled=1 if f.get('enabled')=='1' else 0
     with db() as c:

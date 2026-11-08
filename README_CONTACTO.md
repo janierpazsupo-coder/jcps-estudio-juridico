@@ -14,9 +14,9 @@ Para usar la base gratuita `jcps-consultas` ya creada en Render, debe conectarse
 
 El formulario limita tamaño, extensión y firmas básicas de archivos; aplica un control básico de frecuencia y registra consentimiento. No sustituye medidas profesionales de privacidad y ciberseguridad.
 
-## WhatsApp a dos personas
+## WhatsApp al responsable
 
-La recepción y bandeja funcionan sin WhatsApp. **El envío automático a dos números de WhatsApp no está conectado**; exige la plataforma oficial de WhatsApp Business, credenciales autorizadas, autorización de destinatarios y, en su caso, una plantilla aprobada. La API de Meta no puede reemplazarse por enlaces `wa.me`.
+Se ha preparado un aviso automático para un único contacto mediante WhatsApp Business Cloud API. Requiere configurar y autorizar el número emisor, credenciales y plantilla en Meta; sin ello no se envía ningún mensaje. Consulta [WHATSAPP_CONFIGURACION.md](WHATSAPP_CONFIGURACION.md). Los documentos permanecen en la bandeja privada y no se adjuntan automáticamente al aviso.
 
 ## Notificaciones opcionales por correo
 

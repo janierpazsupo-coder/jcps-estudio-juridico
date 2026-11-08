@@ -23,7 +23,6 @@ _limits = defaultdict(deque)
 SEED = [
  ('guia','Derecho Civil: antes de firmar un contrato','Revisa los datos de las partes, las obligaciones, los plazos y la documentación. Una consulta inicial puede ayudarte a identificar dudas.','', '', ''),
  ('guia','Derecho Laboral: ¿qué revisar ante un despido?','Conserva tus comunicaciones laborales y verifica fechas, documentos y beneficios que correspondan a tu régimen.','', '', ''),
- ('guia','Derecho Penal: información sobre diligencias','Conocer los derechos y garantías procesales permite formular preguntas adecuadas y acudir a las autoridades competentes.','', '', ''),
 ]
 
 
@@ -117,6 +116,7 @@ def comunidad():
             num=conn.execute('SELECT COUNT(*) FROM jcps_social_followers').fetchone()[0]
         records=[]
         for x in all_posts:
+            if 'derecho penal' in str(x[2]).lower(): continue
             records.append(dict(zip(('id','tipo','titulo','contenido','creado','fecha_evento','lugar','enlace'),x),reacciones=counts.get(x[0],{'like':0,'toque':0})))
         now=datetime.now(timezone.utc)
         articles=[x for x in records if x['tipo']=='guia']

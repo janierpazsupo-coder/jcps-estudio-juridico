@@ -3,6 +3,7 @@ No envía WhatsApp sin autorización de WhatsApp Business ni afirma que lo haga.
 La bandeja es accesible solo mediante sesión administrativa.
 """
 import os
+import asyncio
 import re
 import io
 import hmac
@@ -24,6 +25,7 @@ from fastapi import APIRouter, Request, HTTPException
 from starlette.datastructures import UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from PIL import Image, UnidentifiedImageError
+from whatsapp_jcps import send_whatsapp_notice
 
 router = APIRouter()
 ROOT = Path(__file__).resolve().parent
@@ -36,7 +38,7 @@ EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.pdf', '.doc', '.docx', '.xls',
 IMAGE_EXT = {'.jpg', '.jpeg', '.png', '.webp'}
 ZIP_EXT = {'.docx', '.xlsx', '.pptx', '.odt'}
 OLE_EXT = {'.doc', '.xls', '.ppt'}
-ALLOWED = {'civil': 'Derecho Civil', 'laboral': 'Derecho Laboral', 'penal': 'Derecho Penal'}
+ALLOWED = {'civil': 'Derecho Civil', 'laboral': 'Derecho Laboral'}
 APPROVED_ORIGINS = set(x.strip().rstrip('/') for x in os.getenv('JCPS_PUBLIC_ORIGINS', 'https://jcps-estudio-juridico.onrender.com').split(',') if x.strip())
 
 @contextmanager
@@ -86,6 +88,12 @@ def init_contact_db():
             conn.execute('''CREATE TABLE IF NOT EXISTS jcps_adjuntos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, consulta_id INTEGER NOT NULL REFERENCES jcps_consultas(id),
                 nombre TEXT NOT NULL, tipo TEXT NOT NULL, contenido BLOB NOT NULL)''')
+        conn.execute('''CREATE TABLE IF NOT EXISTS jcps_wa_notificaciones (
+            codigo TEXT PRIMARY KEY,
+            estado TEXT NOT NULL,
+            mensaje_id TEXT NOT NULL DEFAULT '',
+            actualizado TEXT NOT NULL
+        )''')
     _initialized = True
 
 def sql(pg, s):
@@ -234,12 +242,20 @@ async def recibir_consulta(req:Request):
         raise HTTPException(503,'No se pudo guardar la consulta. No fue enviada; intenta nuevamente.')
     notification=False
     try:
-        notification=_notify_admins(codigo)
+        notification=await asyncio.to_thread(_notify_admins, codigo)
     except Exception:
-        # Los avisos son independientes; la bandeja sí contiene el mensaje.
         notification=False
-    return JSONResponse({'ok':True,'codigo':codigo,'estado':'recibida_en_bandeja','aviso_email':notification,
-                        'detalle':'Consulta recibida en la bandeja privada JCPS. La recepción no implica envío por WhatsApp.'},
+    whatsapp=await asyncio.to_thread(send_whatsapp_notice, codigo, ALLOWED[area], nombre, asunto, mensaje)
+    try:
+        with contact_db() as (conn,pg):
+            conn.execute(sql(pg,'INSERT INTO jcps_wa_notificaciones(codigo,estado,mensaje_id,actualizado) VALUES(?,?,?,?) ON CONFLICT(codigo) DO UPDATE SET estado=excluded.estado,mensaje_id=excluded.mensaje_id,actualizado=excluded.actualizado'),(codigo,whatsapp['estado'],whatsapp['mensaje_id'],datetime.now(timezone.utc).isoformat()))
+    except Exception:
+        # La consulta ya está registrada y no debe descartarse por un error de aviso.
+        pass
+    aviso='Meta aceptó la solicitud de aviso; la entrega o lectura no están confirmadas.' if whatsapp['estado']=='aceptado_por_meta' else 'El aviso automático por WhatsApp no se ha enviado. La consulta permanece en la bandeja privada.'
+    return JSONResponse({'ok':True,'codigo':codigo,'estado':'recibida_en_bandeja',
+                         'aviso_email':notification,'whatsapp_estado':whatsapp['estado'],
+                         'detalle':'Consulta recibida en la bandeja privada JCPS. '+aviso},
                         headers={'Cache-Control':'no-store'})
 
 def _admin_headers(resp):
@@ -257,6 +273,7 @@ def bandeja(req:Request):
         with contact_db() as (conn,pg):
             rows=conn.execute('SELECT id,codigo,created_at,nombre,area,asunto,mensaje,files_count FROM jcps_consultas ORDER BY id DESC LIMIT 150').fetchall()
             items=[tuple(r) for r in rows]
+            wa_states=dict(conn.execute('SELECT codigo,estado FROM jcps_wa_notificaciones'))
     except Exception:
         return _admin_headers(HTMLResponse('La bandeja no está disponible.',status_code=503))
     h=lambda v:html.escape(str(v),quote=True)
@@ -264,10 +281,11 @@ def bandeja(req:Request):
        f'<article><div class="head"><strong>{h(x[1])}</strong><span>{h(x[2][:16])}</span></div>'
        f'<p><b>Remitente:</b> {h(x[3])} · <b>Área:</b> {h(ALLOWED.get(x[4],x[4]))}</p>'
        f'<p><b>Asunto:</b> {h(x[5])}</p><p class="mensaje">{h(x[6])}</p>'
+       f'<p><b>Aviso de WhatsApp:</b> {h(wa_states.get(x[1],"sin intento registrado"))}</p>'
        f'<p>{h(x[7])} archivo(s) adjunto(s). '+(f'<a href="/admin/consultas/{x[0]}/archivos">Ver adjuntos</a>' if x[7] else '')+'</p></article>'
        for x in items
     ) or '<p>No hay consultas recibidas todavía.</p>'
-    page='''<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bandeja privada JCPS</title><style>body{margin:0;background:#111618;color:#f4efe5;font:16px system-ui;line-height:1.65}main{max-width:950px;margin:auto;padding:30px 20px}a{color:#e1c08b}article{background:#242725;border:1px solid #78654d;border-radius:16px;margin:20px 0;padding:20px}.head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.head span{color:#d8c7a3}.mensaje{white-space:pre-wrap;overflow-wrap:anywhere}h1{font-family:Georgia,serif}p{max-width:100%;overflow-wrap:anywhere}</style></head><body><main><a href="/admin">← Administración</a><h1>Bandeja de consultas JCPS</h1><p>Acceso privado. Aquí aparecen las consultas efectivamente guardadas en el servidor. No significa que ya se hayan enviado por WhatsApp.</p>'''+content+'</main></body></html>'
+    page='''<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bandeja privada JCPS</title><style>body{margin:0;background:#111618;color:#f4efe5;font:16px system-ui;line-height:1.65}main{max-width:950px;margin:auto;padding:30px 20px}a{color:#e1c08b}article{background:#242725;border:1px solid #78654d;border-radius:16px;margin:20px 0;padding:20px}.head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.head span{color:#d8c7a3}.mensaje{white-space:pre-wrap;overflow-wrap:anywhere}h1{font-family:Georgia,serif}p{max-width:100%;overflow-wrap:anywhere}</style></head><body><main><a href="/admin">← Administración</a><h1>Bandeja de consultas JCPS</h1><p>Acceso privado. Aquí aparecen las consultas guardadas en el servidor y el estado de aceptación por Meta del aviso de WhatsApp. Aceptación no garantiza entrega ni lectura.</p>'''+content+'</main></body></html>'
     return _admin_headers(HTMLResponse(page))
 
 @router.get('/admin/consultas/{consulta_id}/archivos',response_class=HTMLResponse)
@@ -294,7 +312,7 @@ def descargar_adjunto(req:Request,attachment_id:int):
 
 @router.get('/privacidad', response_class=HTMLResponse)
 def privacidad():
-    doc='''<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Privacidad · JCPS</title></head><body style="font:16px system-ui;max-width:730px;margin:40px auto;padding:18px;line-height:1.65"><a href="/">← JCPS</a><h1>Información de privacidad</h1><p>Los datos enviados por el formulario (nombre, asunto, especialidad, mensaje y documentos que voluntariamente adjuntes) se utilizan únicamente para recibir y gestionar consultas relacionadas con JCPS. Solo el personal autorizado puede acceder a la bandeja privada.</p><p>Evita enviar DNI, contraseñas, historias clínicas, datos bancarios o expedientes completos por este formulario. No se garantiza asesoría jurídica individual, defensa o patrocinio.</p><p>La recepción y el almacenamiento de la consulta no significan que se haya enviado a WhatsApp ni que la consulta haya sido aceptada como encargo profesional. Los archivos no se publican en la web.</p><p>El alojamiento gratuito puede no conservar datos después de reinicios o cambios del servicio hasta que se configure almacenamiento permanente. Solicita información sobre tratamiento o eliminación de datos mediante los canales de contacto del estudio.</p></body></html>'''
+    doc='''<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Privacidad · JCPS</title></head><body style="font:16px system-ui;max-width:730px;margin:40px auto;padding:18px;line-height:1.65"><a href="/">← JCPS</a><h1>Información de privacidad</h1><p>Los datos enviados por el formulario (nombre, asunto, especialidad, mensaje y documentos que voluntariamente adjuntes) se utilizan únicamente para recibir y gestionar consultas relacionadas con JCPS. Solo el personal autorizado puede acceder a la bandeja privada.</p><p>Evita enviar DNI, contraseñas, historias clínicas, datos bancarios o expedientes completos por este formulario. No se garantiza asesoría jurídica individual, defensa o patrocinio.</p><p>Si se configura WhatsApp Business Platform, JCPS puede avisar al contacto responsable mediante una plantilla aprobada y compartir solo una referencia y especialidad, o los detalles de la consulta si se configura expresamente un formato permitido. Los archivos permanecen en la bandeja privada: no se adjuntan automáticamente a WhatsApp. El registro no implica la aceptación de un encargo profesional. Los archivos no se publican en la web.</p><p>El alojamiento gratuito puede no conservar datos después de reinicios o cambios del servicio hasta que se configure almacenamiento permanente. Solicita información sobre tratamiento o eliminación de datos mediante los canales de contacto del estudio.</p></body></html>'''
     return HTMLResponse(doc,headers={'Cache-Control':'no-store'})
 
 @router.get('/api/estado-consultas')
